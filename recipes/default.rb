@@ -7,10 +7,16 @@
 # All rights reserved - Do Not Redistribute
 #
 
-# downloading jdk7
+# downloading jdk7u80
 remote_file '/tmp/jdk-7u80-linux-x64.tar.gz' do
 	source 'https://box.cognifide.com/java/jdk7/jdk-7u80-linux-x64.tar.gz'
 	action :create_if_missing
+end
+
+#downloading jdk7u55
+remote_file '/tmp/jdk-7u55-linux-x64.tar.gz' do
+    source 'https://box.cognifide.com/java/jdk7/jdk-7u55-linux-x64.tar.gz'
+    action :create_if_missing
 end
 
 #downloading jdk8
@@ -22,8 +28,10 @@ end
 # including libarchive recipe to be able to use libarchive_file resource
 include_recipe "libarchive"
 
+include_recipe "jenkins::java"
+
 # extracting jdk7 and jdk8 in the /tmp directory
-for file in ["jdk-7u80-linux-x64.tar.gz", "jdk-8u66-linux-x64.tar.gz"] do
+for file in ["jdk-7u80-linux-x64.tar.gz", "jdk-8u66-linux-x64.tar.gz", "jdk-7u55-linux-x64.tar.gz"] do
 	libarchive_file "#{file}" do
 		path "/tmp/#{file}"
 		extract_to "/tmp/"
