@@ -1,16 +1,10 @@
 #!/bin/bash
 
 serverUrl='http://jenkins-server.local:8080/'
+javaUrl="${serverUrl}configure|grep env.value|tr ' ' '\n'|grep '(JDK)'|tr '\">' '\t'|cut -f1" 
+jobsList="${serverUrl}api/json?pretty=true|grep name|grep -v All|tr -d ' \",'|tr ':' '\t'| cut -f2"
 
-javaUrl=${serverUrl}
-javaUrl+='configure|grep env.value|tr " " "\n"|grep "(JDK)"|tr "\">" "\t"|cut -f1' 
-
-comm1='curl --silent ' 
-comm1+=${javaUrl}  
-
-jobsList=${serverUrl}
-jobsList+="api/json?pretty=true|grep name|grep -v All|tr -d ' \",'|tr ':' '\t'| cut -f2"
-
+comm1="curl --silent ${javaUrl}"  
 comm2="curl --silent ${jobsList}"
 
 jobName=''
@@ -19,10 +13,6 @@ jdkVersion=''
 badInputParameters()
 {
   echo "Usage: $0 JOBNAME JDK_VERSION"
-  echo "where JOBNAME like: "
-  cat jobsList
-  echo "and JDK_VERSION like: "
-  cat javaList
   exit
 }
 
@@ -53,7 +43,6 @@ if [ $# -eq 2 ]; then
        rm configNew.xml configOld.xml
        exit
     else
-       echo "Not correct parameters were used!"
        badInputParameters
     fi
 else
