@@ -1,0 +1,64 @@
+#!/bin/bash
+
+serverUrl='http://jenkins-server.local:8080/'
+
+javaUrl=${serverUrl}
+
+javaUrl+='configure|grep env.value|tr " " "\n"|grep "(JDK)"|tr "\">" "\t"|cut -f1' 
+
+comm1='curl --silent ' 
+comm1+=${javaUrl}  
+
+jobsName=${serverUrl}
+jobsName+="api/json?pretty=true|grep name|grep -v All|tr -d ' \",'|tr ':' '\t'| cut -f2"
+
+comm2="curl --silent ${jobsName}"
+
+paramJob=''
+paramJDK='' 
+
+badInputParameters()
+{
+  echo "Usage: $0 JOBNAME JDK_VERSION"
+  echo "where JOBNAME like: "
+  cat jobsList
+  echo "and JDK_VERSION like: "
+  cat javaList
+  exit
+}
+
+if [ $# -eq 2 ]; then
+    eval $comm1 > javaList
+    eval $comm2 > jobsList
+    while read line1
+       do
+          if [ $1 == $line1 ]; then
+             paramJob+=$1
+             echo "first argument: $line1"
+             while read line2
+                do
+                   if [ $2 == $line2 ]; then
+                      paramJDK+=$2
+                      echo "second argument: $line2"
+                   fi
+                done < javaList           
+          fi 
+       done < jobsList
+    if [ "$paramJob" != "" ] && [ "$paramJDK" != "" ]; then
+       echo $paramJob $paramJDK
+       echo "The java used in job: $paramJob changed into JDK: $paramJDK"
+       exit
+    else
+       echo "Not correct parameters were used!"
+       badInputParameters
+    fi
+else
+   badInputParameters 
+fi
+ 
+
+
+
+
+
+
