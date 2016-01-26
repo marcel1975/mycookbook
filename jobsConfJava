@@ -3,19 +3,18 @@
 serverUrl='http://jenkins-server.local:8080/'
 
 javaUrl=${serverUrl}
-
 javaUrl+='configure|grep env.value|tr " " "\n"|grep "(JDK)"|tr "\">" "\t"|cut -f1' 
 
 comm1='curl --silent ' 
 comm1+=${javaUrl}  
 
-jobsName=${serverUrl}
-jobsName+="api/json?pretty=true|grep name|grep -v All|tr -d ' \",'|tr ':' '\t'| cut -f2"
+jobsList=${serverUrl}
+jobsList+="api/json?pretty=true|grep name|grep -v All|tr -d ' \",'|tr ':' '\t'| cut -f2"
 
-comm2="curl --silent ${jobsName}"
+comm2="curl --silent ${jobsList}"
 
-paramJob=''
-paramJDK='' 
+jobName=''
+jdkVersion='' 
 
 badInputParameters()
 {
@@ -33,20 +32,25 @@ if [ $# -eq 2 ]; then
     while read line1
        do
           if [ $1 == $line1 ]; then
-             paramJob+=$1
+             jobName+=$1
              echo "first argument: $line1"
              while read line2
                 do
                    if [ $2 == $line2 ]; then
-                      paramJDK+=$2
+                      jdkVersion+=$2
                       echo "second argument: $line2"
                    fi
                 done < javaList           
           fi 
        done < jobsList
-    if [ "$paramJob" != "" ] && [ "$paramJDK" != "" ]; then
-       echo $paramJob $paramJDK
-       echo "The java used in job: $paramJob changed into JDK: $paramJDK"
+    if [ "$jobName" != "" ] && [ "$jdkVersion" != "" ]; then
+       echo $jobName $jdkVersion
+       curl --silent -v ${serverUrl}/job/${jobName}/config.xml > configOld.xml
+       jdk_old=`awk -F'[<>]' '/<jdk>/{print $3}' configOld.xml`
+       sed "s#\(<jdk>\)${jdk_old}\(</jdk\)""#\1JDK ${jdkVersion}\2#g" configOld.xml > configNew.xml
+       curl -v -X POST --data-binary @configNew.xml -H 'Content-Type: application/xml' ${serverUrl}/job/${jobName}/config.xml  
+       echo "The JDK used for job: $jobName changed into JDK: $jdkVersion"
+       rm configNew.xml configOld.xml
        exit
     else
        echo "Not correct parameters were used!"
@@ -55,10 +59,4 @@ if [ $# -eq 2 ]; then
 else
    badInputParameters 
 fi
- 
-
-
-
-
-
 
