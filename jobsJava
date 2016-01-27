@@ -1,0 +1,92 @@
+#!/bin/bash
+
+###################################################################################################
+########################### ###Start of functions definition ######################################
+###################################################################################################
+
+runCurlSilent()
+{
+  eval curl --silent $1
+}
+
+runCurlSilentHead()
+{
+ eval curl --silent --head $1
+}
+
+tmpFiles()
+{
+  tmpjdk=`mktemp`
+}
+
+usage() 
+{
+cat << EOF
+  $0 -j <jobsName> -x <jdkVersion>
+     -j First flag takes 1 argument
+     -x Second flag takes 1 argument
+EOF
+  exit 1
+}
+
+modificationJdk()
+{
+  tmpJDKNewFile=`mktemp`
+  echo "Modyfication of JDK base on the given param: $jdkVer"
+  sed "s#\(<jdk>\)${jdk_old}\(</jdk\)""#\1JDK ${jdkVer}\2#g" $tmpJDKOldFile > $tmpJDKNewFile
+  curl -s -v -X POST --data-binary @${tmpJDKNewFile} -H 'Content-Type: application/xml' ${serverUrl}/job/${jobName}/config.xml 2>/dev/null
+}
+
+existingJDK()
+{
+  echo "Checking if the correct version of JDK was entered"
+  tmpFiles
+}
+
+theSameJdk()	
+{
+  tmpJDKOldFile=`mktemp`
+  echo "Checking if given version of JDK is not used!"
+  (curl -s -v ${serverUrl}/job/${jobName}/config.xml 2>/dev/null) > ${tmpJDKOldFile} 
+  jdk_old=`awk -F'[<>]' '/<jdk>/{print $3}' $tmpJDKOldFile`
+  [[ $jdk_old = "JDK ${jdkVer}" ]] && echo "JDK is already set" || modificationJdk 
+}
+
+startProcessing()
+{
+ runCurlSilentHead ${jobsUrl} | grep 'HTTP/1.1 200' > /dev/null 
+ [[ $? -eq 0 ]] && echo "Jobname: ${jobName} exists" || usage 
+ theSameJdk
+}
+
+###################################################################################################
+################################ End of functions definition ######################################
+###################################################################################################
+
+
+#tmpJdk=`mktemp`
+
+jobName=''
+countsArg=0
+while getopts ":j:x::" option; do
+  case "$option" in
+    j) jobName=$OPTARG
+       countsArg=$((countsArg+1));;
+    x) jdkVer=$OPTARG 
+       countsArg=$((countsArg+1));;
+    :) echo "Option -$OPTARG requires an argument." >&2
+       usage
+       ;;
+    \?) echo "Ivalid option: -$OPTARG " >&2
+       usage
+       ;;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+serverUrl='http://jenkins-server.local:8080/'
+javaUrl="${serverUrl}configure|grep env.value|tr ' ' '\n'|grep '(JDK)'|tr '\">' '\t'|cut -f1" 
+jobsUrl="${serverUrl}job/${jobName}/"
+
+[[ $countsArg -eq 2 ]] && startProcessing || usage
+
