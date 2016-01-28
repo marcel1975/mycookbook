@@ -1,6 +1,4 @@
 #!/bin/bash
-# Marcin Walkowski
-# January 28th 2016 
 
 ###################################################################################################
 ########################### ###Start of functions definition ######################################
@@ -30,9 +28,10 @@ modificationJDK()
 {
   echo "Inside modificationJDK function"
   tmpJDKNewFile=`mktemp -p ~/`
-  echo "Modyfication of JDK base on the given param: $jdkVer"
+  echo "Modification of JDK base on the given param: $jdkVer"
   sed "s#\(<jdk>\)${jdk_old}\(</jdk\)""#\1JDK ${jdkVer}\2#g" $tmpJDKOldFile > $tmpJDKNewFile
   curl -s -v -X POST --data-binary @${tmpJDKNewFile} -H 'Content-Type: application/xml' ${serverUrl}/job/${jobName}/config.xml 2>/dev/null
+  rm -f ${tmpJDKNewFile} ${tmpJDKOldFile}
 }
     
 existingJDK()
@@ -51,7 +50,13 @@ theSameJDK()
   echo "Inside TheSameJDK function"
   (curl -s -v ${serverUrl}/job/${jobName}/config.xml 2>/dev/null) > ${tmpJDKOldFile} 
   jdk_old=`awk -F'[<>]' '/<jdk>/{print $3}' $tmpJDKOldFile`
-  [[ $jdk_old = "JDK ${jdkVer}" ]] && usage || existingJDK 
+  #[[ $jdk_old = "JDK ${jdkVer}" ]] && usage || existingJDK
+  if [ "$jdk_old" = "JDK ${jdkVer}" ]; then
+     rm -f ${tmpJDKOldFile}
+     usage
+  else
+     existingJDK
+  fi
 }
 
 checkingJobName()

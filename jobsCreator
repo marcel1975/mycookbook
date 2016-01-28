@@ -1,0 +1,10 @@
+
+#!/bin/bash
+
+
+jobNamesArray=( 'testowy21' 'testowy22' 'testowy23' 'testowy24' 'testowy25' 'testowy26' 'testowy27' 'testowy28' 'testowy29' 'testowy30') 
+
+for tmp in "${jobNamesArray[@]}" 
+do
+   curl -X POST "http://jenkins-server.local:8080/createItem?name=${tmp}" --data-binary "@mylocalconfig.xml" -H "Content-Type: text/xml"
+done
