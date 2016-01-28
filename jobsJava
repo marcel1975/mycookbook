@@ -28,7 +28,7 @@ modificationJDK()
 {
   echo "Inside modificationJDK function"
   tmpJDKNewFile=`mktemp -p ~/`
-  echo "Modification of JDK base on the given param: $jdkVer"
+  echo "Modification of JDK based on the given param: $jdkVer"
   sed "s#\(<jdk>\)${jdk_old}\(</jdk\)""#\1JDK ${jdkVer}\2#g" $tmpJDKOldFile > $tmpJDKNewFile
   curl -s -v -X POST --data-binary @${tmpJDKNewFile} -H 'Content-Type: application/xml' ${serverUrl}/job/${jobName}/config.xml 2>/dev/null
   rm -f ${tmpJDKNewFile} ${tmpJDKOldFile}
@@ -95,9 +95,9 @@ while getopts ":j:x::" option; do
 done
 shift $(( OPTIND - 1 ))
 
+jdkListArray=('1.8.0_66' '1.8.0_20' '1.7.0_79' '1.7.0_80' '1.7.0_55')
 serverUrl='http://jenkins-server.local:8080/'
 javaUrl="${serverUrl}configure|grep env.value|tr ' ' '\n'|grep '(JDK)'|tr '\">' '\t'|cut -f1" 
 jobsUrl="${serverUrl}job/${jobName}/"
-jdkListArray=('1.8.0_66' '1.7.0_79' '1.7.0_80' '1.7.0_55')
 
 [[ $countsArg -eq 2 ]] && startProcessing || usage
