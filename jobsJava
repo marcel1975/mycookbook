@@ -1,23 +1,10 @@
 #!/bin/bash
+# Marcin Walkowski
+# January 28th 2016 
 
 ###################################################################################################
 ########################### ###Start of functions definition ######################################
 ###################################################################################################
-
-runCurlSilent()
-{
-  eval curl --silent $1
-}
-
-runCurlSilentHead()
-{
- eval curl --silent --head $1
-}
-
-tmpFiles()
-{
-  tmpjdk=`mktemp`
-}
 
 usage() 
 {
@@ -29,34 +16,54 @@ EOF
   exit 1
 }
 
-modificationJdk()
+runCurlSilent()
 {
-  tmpJDKNewFile=`mktemp`
+  eval curl --silent $1
+}
+
+runCurlSilentHead()
+{
+ eval curl --silent --head $1
+}
+
+modificationJDK()
+{
+  echo "Inside modificationJDK function"
+  tmpJDKNewFile=`mktemp -p ~/`
   echo "Modyfication of JDK base on the given param: $jdkVer"
   sed "s#\(<jdk>\)${jdk_old}\(</jdk\)""#\1JDK ${jdkVer}\2#g" $tmpJDKOldFile > $tmpJDKNewFile
   curl -s -v -X POST --data-binary @${tmpJDKNewFile} -H 'Content-Type: application/xml' ${serverUrl}/job/${jobName}/config.xml 2>/dev/null
 }
-
+    
 existingJDK()
 {
-  echo "Checking if the correct version of JDK was entered"
-  tmpFiles
+  echo "Inside existingJDK function"
+  for jdk in "${jdkListArray[@]}" 
+  do
+     [[ $jdkVer = $jdk ]] && modificationJDK
+  done
+  exit 1
 }
 
-theSameJdk()	
+theSameJDK()	
 {
-  tmpJDKOldFile=`mktemp`
-  echo "Checking if given version of JDK is not used!"
+  tmpJDKOldFile=`mktemp -p ~/` || exit 1 
+  echo "Inside TheSameJDK function"
   (curl -s -v ${serverUrl}/job/${jobName}/config.xml 2>/dev/null) > ${tmpJDKOldFile} 
   jdk_old=`awk -F'[<>]' '/<jdk>/{print $3}' $tmpJDKOldFile`
-  [[ $jdk_old = "JDK ${jdkVer}" ]] && echo "JDK is already set" || modificationJdk 
+  [[ $jdk_old = "JDK ${jdkVer}" ]] && usage || existingJDK 
+}
+
+checkingJobName()
+{
+ echo "Inside checkingJobName function"
+ runCurlSilentHead ${jobsUrl} | grep 'HTTP/1.1 200' > /dev/null 
+ [[ $? -eq 0 ]] && theSameJDK || usage 
 }
 
 startProcessing()
 {
- runCurlSilentHead ${jobsUrl} | grep 'HTTP/1.1 200' > /dev/null 
- [[ $? -eq 0 ]] && echo "Jobname: ${jobName} exists" || usage 
- theSameJdk
+  checkingJobName
 }
 
 ###################################################################################################
@@ -64,8 +71,7 @@ startProcessing()
 ###################################################################################################
 
 
-#tmpJdk=`mktemp`
-
+jdkVer=''
 jobName=''
 countsArg=0
 while getopts ":j:x::" option; do
@@ -87,6 +93,6 @@ shift $(( OPTIND - 1 ))
 serverUrl='http://jenkins-server.local:8080/'
 javaUrl="${serverUrl}configure|grep env.value|tr ' ' '\n'|grep '(JDK)'|tr '\">' '\t'|cut -f1" 
 jobsUrl="${serverUrl}job/${jobName}/"
+jdkListArray=('1.8.0_66' '1.7.0_79' '1.7.0_80' '1.7.0_55')
 
 [[ $countsArg -eq 2 ]] && startProcessing || usage
-
